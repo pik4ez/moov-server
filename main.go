@@ -48,8 +48,8 @@ func LocationHandler(w http.ResponseWriter, req *http.Request) {
 		if rand.Intn(2) == 0 { // 0 or 1
 			var o Object
 			o.Lat, o.Lon, o.Title = point.Lat, point.Lon, fmt.Sprintf("Some object #%d", rand.Int())
-			o.Lat += rand.Float64() / 500 - 0.5
-			o.Lon += rand.Float64() / 500 - 0.5
+			o.Lat += (rand.Float64() - 0.5) / 300
+			o.Lon += (rand.Float64() - 0.5) / 300
 
 			w.Header().Set(contentType, contentTypeValue)
 			body, err = json.Marshal(o)
