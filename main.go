@@ -1,41 +1,73 @@
 package main
 
 import (
-	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
+	"fmt"
+	"time"
+	"encoding/json"
+	"math/rand"
 )
 
-const logPath = "/tmp/moov.log"
+type Point struct {
+	Lat float64   `json:"lat"`
+	Lon float64   `json:"lon"`
+}
 
-// LocationHandler handles location requests (GET and POST).
+type Object struct {
+	Point
+	Title string `json:"title"`
+}
+
+const host = ":8001"
+const path = "/location"
+const contentType = "Content-Type"
+const contentTypeValue = "application/json"
+
 func LocationHandler(w http.ResponseWriter, req *http.Request) {
 	if req.Method == "GET" {
-		// TODO implement
-		io.WriteString(w, "not supported\n")
-		return
-	}
-	if req.Method == "POST" {
-		logFile, err := os.OpenFile(logPath, os.O_APPEND|os.O_WRONLY, 0600)
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer logFile.Close()
+		w.Header().Set(contentType, contentTypeValue)
+		w.Write([]byte(fmt.Sprintf("{\"datetime\": \"%s\"}\n", time.Now())))
+
+	} else if req.Method == "POST" {
+
 		body, err := ioutil.ReadAll(req.Body)
 		if err != nil {
-			log.Fatal(err)
+			log.Println(err)
 		}
-		body = append(body, []byte("\n")...)
-		if _, err = logFile.Write(body); err != nil {
-			log.Fatal(err)
+
+		var point Point
+		err = json.Unmarshal(body, &point)
+		if err != nil {
+			log.Println(err)
 		}
-		io.WriteString(w, "POST accepted\n")
+		fmt.Printf("<- point: lat %f, lon %f\n", point.Lat, point.Lon)
+
+
+		if rand.Intn(2) == 0 { // 0 or 1
+			var o Object
+			o.Lat, o.Lon, o.Title = point.Lat, point.Lon, fmt.Sprintf("Some object #%d", rand.Int())
+			o.Lat += rand.Float64() / 500
+			o.Lon += rand.Float64() / 500
+
+			w.Header().Set(contentType, contentTypeValue)
+			body, err = json.Marshal(o)
+			if err != nil {
+				log.Println(err)
+			}
+			w.Write(body)
+			fmt.Print("-> ")
+			fmt.Println(string(body))
+			return
+		}
+
+		w.WriteHeader(http.StatusNoContent)
 	}
 }
 
 func main() {
-	http.HandleFunc("/location", LocationHandler)
-	log.Fatal(http.ListenAndServe(":8001", nil))
+	fmt.Println(host)
+	http.HandleFunc(path, LocationHandler)
+	log.Fatal(http.ListenAndServe(host, nil))
 }
